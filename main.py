@@ -8,13 +8,13 @@ import copy  # To clone objects for simulation
 
 
 class Settings:
-    G = 0.001
+    G = 1
 
     root = tk.Tk()
     width = root.winfo_screenwidth()
     height = root.winfo_screenheight()
 
-    PREDICTION_STEPS = 5000  # How far to predict
+    PREDICTION_STEPS = 100  # How far to predict
     TIME_STEP = 0.1  # Time step for prediction
 
 
@@ -62,12 +62,29 @@ class Body:
 
     def render(self):
         draw_circle(window.SURFACE, self.color, self.position, self.radius)
+
+        # Velocity Line
         draw_line(
             window.SURFACE,
             WHITE,
             self.position,
             self.position + self.velocity,
             2,
+        )
+
+        # Velocity Line Tip
+        norm = self.velocity.normalize()
+        mag = self.velocity.magnitude()
+        direction = math.atan2(self.velocity.y, self.velocity.x)
+        tip_size = 10
+
+        theta = math.atan2(tip_size, mag)
+        dst = tip_size / math.sin(theta)
+        direction_l = Vector2(math.cos(direction + theta), math.sin(direction + theta)).normalize()
+        direction_r = Vector2(math.cos(direction - theta), math.sin(direction - theta)).normalize()
+
+        draw_line(
+            window.SURFACE, WHITE, self.position + direction_l * dst, self.position + direction_r * dst, 2
         )
 
     def predict_orbit(self, bodies):
@@ -93,17 +110,26 @@ def start():
     global bodies
     bodies = []
 
-    m1, m2 = 10000000, 20000000
-    r = 200  # Initial separation
+    scale_factor = 260.87
 
-    v = (Settings.G * (m1 + m2) / r) ** 0.5  # Orbital velocity formula
-    print(f"Orbital Velocity: {v}")
+    mass = scale_factor * 10**3
 
-    body1 = Body(Vector2(-r // 2, 0), Vector2(0, v / 2), 10, m1, GREEN)
-    body2 = Body(Vector2(r // 2, 0), Vector2(0, -v / 2), 10, m2, BLUE)
+    positions = [
+        Vector2(-0.97000436, 0.24308753) * scale_factor,
+        Vector2(0.97000436, -0.24308753) * scale_factor,
+        Vector2(0, 0) * scale_factor,
+    ]
 
-    bodies.append(body1)
-    bodies.append(body2)
+    velocities = [
+        Vector2(0.46620368, 0.43236573) * scale_factor**0.5,
+        Vector2(0.46620368, 0.43236573) * scale_factor**0.5,
+        Vector2(-0.93240737, -0.86473146) * scale_factor**0.5,
+    ]
+
+    colors = [RED, GREEN, BLUE]
+
+    for i in range(3):
+        bodies.append(Body(positions[i], velocities[i], 10, mass, colors[i]))
 
 
 def draw_orbits():
@@ -147,9 +173,14 @@ def update():
         body.update(bodies, window.delta_time)
         body.render()
 
+    fps_text = Text(
+        f"FPS: {window.clock.get_fps():.2f}", Text.arial_32, Vector2(32, 32), Text.top_left, WHITE
+    )
+    fps_text.render()
+
     set_window(window)
 
 
 if __name__ == "__main__":
     print("Width:", Settings.width, "Height:", Settings.height)
-    run(start, update, Settings.width, Settings.height, False, "Celestial Body Simulation", 999)
+    run(start, update, Settings.width, Settings.height, False, "Celestial Body Simulation", 99999)
